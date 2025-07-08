@@ -1,0 +1,37 @@
+{
+  "name": "research-crew-frontend",
+  "version": "1.0.0",
+  "description": "A simple and elegant Next.js frontend for generating emails based on company names.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "nextjs",
+    "frontend",
+    "email",
+    "api"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
+    "axios": "^1.10.0",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.7",
+    "@types/react": "19.1.8",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^7.32.0",
+    "eslint-config-next": "^12.0.7",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^4.4.4"
+  }
+}

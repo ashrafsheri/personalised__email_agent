@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResearchCrew Frontend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .status.pending {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+        .status.running {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .status.completed {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+        .status.failed {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ResearchCrew - AI Research Assistant</h1>
+        
+        <form id="researchForm">
+            <div class="form-group">
+                <label for="topic">Company/Topic to Research:</label>
+                <input type="text" id="topic" name="topic" placeholder="e.g., COLAB Pakistan" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="current_year">Current Year (optional):</label>
+                <input type="text" id="current_year" name="current_year" placeholder="2025">
+            </div>
+            
+            <button type="submit" id="submitBtn">Start Research</button>
+            <button type="button" id="checkStatusBtn" disabled>Check Status</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+
+        <div id="status" class="status" style="display: none;">
+            <h3>Task Status</h3>
+            <p id="statusText"></p>
+            <p id="taskId"></p>
+        </div>
+
+        <div id="result" class="result" style="display: none;">
+            <h3>Research Result</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        let currentTaskId = null;
+        let statusInterval = null;
+
+        document.getElementById('researchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const topic = document.getElementById('topic').value;
+            const currentYear = document.getElementById('current_year').value || new Date().getFullYear().toString();
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('result').style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/research`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        topic: topic,
+                        current_year: currentYear
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                currentTaskId = data.task_id;
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+                // Show status
+                showStatus(data.status, data.message, data.task_id);
+                
+                // Enable check status button
+                document.getElementById('checkStatusBtn').disabled = false;
+                
+                // Start polling for status updates
+                startStatusPolling();
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Error starting research: ' + error.message);
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+
+        document.getElementById('checkStatusBtn').addEventListener('click', async () => {
+            if (currentTaskId) {
+                await checkTaskStatus(currentTaskId);
+            }
+        });
+
+        function showStatus(status, message, taskId) {
+            const statusDiv = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+            const taskIdText = document.getElementById('taskId');
+            
+            statusDiv.className = `status ${status}`;
+            statusDiv.style.display = 'block';
+            statusText.textContent = message;
+            taskIdText.textContent = `Task ID: ${taskId}`;
+        }
+
+        async function checkTaskStatus(taskId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/research/${taskId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                showStatus(data.status, `Status: ${data.status}`, data.task_id);
+                
+                if (data.status === 'completed') {
+                    await getTaskResult(taskId);
+                    stopStatusPolling();
+                    document.getElementById('submitBtn').disabled = false;
+                } else if (data.status === 'failed') {
+                    showStatus('failed', `Failed: ${data.error}`, data.task_id);
+                    stopStatusPolling();
+                    document.getElementById('submitBtn').disabled = false;
+                }
+                
+            } catch (error) {
+                console.error('Error checking status:', error);
+            }
+        }
+
+        async function getTaskResult(taskId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/research/${taskId}/result`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Show result
+                const resultDiv = document.getElementById('result');
+                const resultContent = document.getElementById('resultContent');
+                
+                let content = '';
+                if (data.email_content) {
+                    content += 'Generated Email:\n\n' + data.email_content + '\n\n';
+                }
+                if (data.result) {
+                    content += 'Full Result:\n\n' + data.result;
+                }
+                
+                resultContent.textContent = content;
+                resultDiv.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error getting result:', error);
+            }
+        }
+
+        function startStatusPolling() {
+            statusInterval = setInterval(() => {
+                if (currentTaskId) {
+                    checkTaskStatus(currentTaskId);
+                }
+            }, 5000); // Check every 5 seconds
+        }
+
+        function stopStatusPolling() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+    </script>
+</body>
+</html>
