@@ -39,6 +39,44 @@ research_task:
     it connects to Paismo's offerings.
   agent: researcher
 
+executive_lookup_task:
+  description: >
+    Find the specific person at {topic} company who holds the position of {role}.
+    
+    Your goal is to identify:
+    1. Full name of the person in the {role} position
+    2. Their exact title (which may be slightly different from {role})
+    3. Professional background and experience
+    4. Any recent professional activities, articles, or mentions
+    
+    SEARCH STRATEGY:
+    - Use LinkedIn profiles for the most up-to-date information
+    - Check company websites, especially leadership/team pages
+    - Look for press releases or news articles mentioning executives
+    - Check Crunchbase or other professional databases
+    
+    If you find multiple candidates or conflicting information, analyze recency and 
+    credibility of sources to determine the most likely current person in the role.
+    
+    If you cannot find an exact match for {role}, identify the closest equivalent 
+    position and explain your reasoning.
+  expected_output: >
+    A detailed profile of the person at {topic} who holds the {role} position:
+    
+    EXECUTIVE PROFILE:
+    - Full Name: [Name]
+    - Exact Title: [Title]
+    - Company: {topic}
+    - Professional Background: [Brief summary]
+    - Notable Experience: [Key prior roles/achievements]
+    - Source of Information: [Where you found this data]
+    
+    If unable to find the exact person, provide:
+    - Most likely candidate based on available information
+    - Explanation of uncertainty
+    - Alternative suggested contacts
+  agent: executive_finder
+
 email_task:
   description: >
     Craft a highly personalized sales email for {topic} based on the research findings.

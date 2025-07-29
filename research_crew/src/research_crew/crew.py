@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import time
 from langchain_anthropic import ChatAnthropic
+from .tools import ExecutiveLookupTool
 
 # Load environment variables from .env file
 load_dotenv()
@@ -49,6 +50,19 @@ class ResearchCrew():
         )
 
     @agent
+    def executive_finder(self) -> Agent:
+        return Agent(
+            config=self.agents_config['executive_finder'],
+            verbose=True,
+            tools=[ExecutiveLookupTool()],
+            llm=self.anthropic_llm,
+            max_retry_attempts=1,
+            retry_wait_time=120,
+            max_execution_time=600,
+            max_iter=2,
+        )
+
+    @agent
     def email_writer(self) -> Agent:
         return Agent(
             config=self.agents_config['email_writer'],
@@ -69,7 +83,15 @@ class ResearchCrew():
         )
 
     @task
-    def reporting_task(self) -> Task:
+    def executive_lookup_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['executive_lookup_task'],
+            # Fix: callback should accept the output parameter
+            callback=lambda output: time.sleep(15)  # 15 second delay
+        )
+
+    @task
+    def email_task(self) -> Task:
         return Task(
             config=self.tasks_config['email_task'],
             output_file='email.md',
@@ -79,10 +101,10 @@ class ResearchCrew():
 
     @crew
     def crew(self) -> Crew:
-        """Creates the ResearchCrew crew with rate limiting"""
+        """Creates the ResearchCrew crew"""
         return Crew(
-            agents=self.agents,
-            tasks=self.tasks,
+            agents=[self.researcher(), self.executive_finder(), self.email_writer()],
+            tasks=[self.research_task(), self.executive_lookup_task(), self.email_task()],
             process=Process.sequential,
             verbose=True,
             # Add crew-level timeout

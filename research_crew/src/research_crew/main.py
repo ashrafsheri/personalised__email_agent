@@ -18,7 +18,8 @@ def run():
     Run the crew with proper rate limiting for Anthropic free tier.
     """
     inputs = {
-        'topic': "COLAB Pakistan",
+        'topic': "Express News Pakistan",
+        'role': "CTO",  # Added role parameter
         'current_year': str(datetime.now().year)
     }
     
@@ -48,6 +49,7 @@ def train():
     """
     inputs = {
         "topic": "RSpace coworking space",
+        "role": "Operations Manager",
         'current_year': str(datetime.now().year)
     }
     try:
@@ -71,7 +73,8 @@ def test():
     Test the crew execution and returns the results.
     """
     inputs = {
-        "topic": "AI LLMs",
+        "topic": "OpenAI",
+        "role": "CTO",
         "current_year": str(datetime.now().year)
     }
     
@@ -80,3 +83,16 @@ def test():
 
     except Exception as e:
         raise Exception(f"An error occurred while testing the crew: {e}")
+    
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "train":
+            train()
+        elif sys.argv[1] == "replay":
+            replay()
+        elif sys.argv[1] == "test":
+            test()
+        else:
+            run()
+    else:
+        run()
