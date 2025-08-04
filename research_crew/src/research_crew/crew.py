@@ -1,52 +1,37 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
-from typing import List
+from typing import List, Dict, Any
 from crewai_tools import SerperDevTool
-import os
+import os, time, re
 from dotenv import load_dotenv
-import time
-from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from .tools import ExecutiveLookupTool
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
-
-# Get API key from environment
-api_key = os.getenv("ANTHROPIC_API_KEY")
+api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
-    raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
 
 @CrewBase
 class ResearchCrew():
-    """ResearchCrew crew"""
+    """Crew to perform executive lookup, research, and craft a personalized sales email"""
 
     agents: List[BaseAgent]
     tasks: List[Task]
-    
+
     def __init__(self):
         super().__init__()
-        # Configure Anthropic with strict rate limiting for free tier
-        self.anthropic_llm = ChatAnthropic(
-            model="claude-3-haiku-20240307",  # Fastest, cheapest model
+        # Shared context for passing values between tasks
+        self.shared_context: Dict[str, Any] = {"cto_name": "there"}
+        # Configure OpenAI LLM
+        self.openai_llm = ChatOpenAI(
+            model="gpt-3.5-turbo",
             temperature=0.7,
-            max_tokens=800,  # Reduced token limit
+            max_tokens=800,
             api_key=api_key,
-            # Add rate limiting parameters
             request_timeout=120,
-        )
-    
-    @agent
-    def researcher(self) -> Agent:
-        return Agent(
-            config=self.agents_config['researcher'], 
-            verbose=True,
-            tools=[SerperDevTool()],
-            llm=self.anthropic_llm,
-            max_retry_attempts=1,  # Only 1 retry to avoid hitting limits
-            retry_wait_time=120,   # Wait 2 minutes between retries
-            max_execution_time=600, # 10 minutes max
-            max_iter=2,  # Maximum 2 iterations only
         )
 
     @agent
@@ -55,7 +40,36 @@ class ResearchCrew():
             config=self.agents_config['executive_finder'],
             verbose=True,
             tools=[ExecutiveLookupTool()],
-            llm=self.anthropic_llm,
+            llm=self.openai_llm,
+            max_retry_attempts=1,
+            retry_wait_time=120,
+            max_execution_time=600,
+            max_iter=2,
+        )
+
+    def _on_lookup(self, lookup_output):
+        """
+        Callback after executive lookup: extract and store the CTO's name
+        """
+        # Optional processing delay
+        time.sleep(15)
+        # Unwrap TaskOutput if needed
+        if hasattr(lookup_output, 'output'):
+            text = lookup_output.output
+        else:
+            text = str(lookup_output)
+        # Extract the bolded name before dash
+        m = re.search(r"\*\*(?P<name>[^–\n]+)", text)
+        self.shared_context['cto_name'] = m.group('name').strip() if m else 'there'
+        print(f"CTO name extracted: {self.shared_context['cto_name']}")
+
+    @agent
+    def researcher(self) -> Agent:
+        return Agent(
+            config=self.agents_config['researcher'],
+            verbose=True,
+            tools=[SerperDevTool()],
+            llm=self.openai_llm,
             max_retry_attempts=1,
             retry_wait_time=120,
             max_execution_time=600,
@@ -64,30 +78,30 @@ class ResearchCrew():
 
     @agent
     def email_writer(self) -> Agent:
+        # Provide CTO name from shared_context as initial input
         return Agent(
             config=self.agents_config['email_writer'],
             verbose=True,
-            llm=self.anthropic_llm,
-            max_retry_attempts=1,  # Only 1 retry
-            retry_wait_time=120,   # Wait 2 minutes between retries
-            max_execution_time=600, # 10 minutes max
-            max_iter=2,  # Maximum 2 iterations only
-        )
-
-    @task
-    def research_task(self) -> Task:
-        return Task(
-            config=self.tasks_config['research_task'],
-            # Fix: callback should accept the output parameter
-            callback=lambda output: time.sleep(15)  # 15 second delay
+            llm=self.openai_llm,
+            inputs={"cto_name": self.shared_context['cto_name']},
+            max_retry_attempts=1,
+            retry_wait_time=120,
+            max_execution_time=600,
+            max_iter=2,
         )
 
     @task
     def executive_lookup_task(self) -> Task:
         return Task(
             config=self.tasks_config['executive_lookup_task'],
-            # Fix: callback should accept the output parameter
-            callback=lambda output: time.sleep(15)  # 15 second delay
+            callback=self._on_lookup
+        )
+
+    @task
+    def research_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['research_task'],
+            callback=lambda _: time.sleep(15)
         )
 
     @task
@@ -95,18 +109,23 @@ class ResearchCrew():
         return Task(
             config=self.tasks_config['email_task'],
             output_file='email.md',
-            # Fix: callback should accept the output parameter
-            callback=lambda output: time.sleep(15)  # 15 second delay
+            callback=lambda _: time.sleep(15)
         )
 
     @crew
     def crew(self) -> Crew:
-        """Creates the ResearchCrew crew"""
         return Crew(
-            agents=[self.researcher(), self.executive_finder(), self.email_writer()],
-            tasks=[self.research_task(), self.executive_lookup_task(), self.email_task()],
+            agents=[
+                self.executive_finder(),  # lookup CTO first
+                self.researcher(),        # then gather research
+                self.email_writer()       # finally write the email
+            ],
+            tasks=[
+                self.executive_lookup_task(),
+                self.research_task(),
+                self.email_task()
+            ],
             process=Process.sequential,
             verbose=True,
-            # Add crew-level timeout
-            max_execution_time=1200,  # 20 minutes total
+            max_execution_time=1200,
         )

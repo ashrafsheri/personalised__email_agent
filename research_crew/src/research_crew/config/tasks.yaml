@@ -25,18 +25,17 @@ research_task:
        - New product launches requiring workforce scaling
     
     Be thorough, accurate, and focus on information that directly relates to 
-    how Paismo's HR and Payroll solutions could address their challenges.
+    how Paismo’s HR and Payroll solutions could address their challenges.
   expected_output: >
     A structured report with clear sections covering:
     
-    1. COMPANY OVERVIEW (size, industry, locations)
-    2. KEY DECISION-MAKERS (names, roles, backgrounds)
-    3. PRIMARY PAIN POINTS (specific HR/Payroll challenges)
-    4. GROWTH CHALLENGES (scaling issues, compliance concerns)
+    1. COMPANY OVERVIEW (size, industry, locations)  
+    2. KEY DECISION-MAKERS (names, roles, backgrounds)  
+    3. PRIMARY PAIN POINTS (specific HR/Payroll challenges)  
+    4. GROWTH CHALLENGES (scaling issues, compliance concerns)  
     5. OPPORTUNITY ASSESSMENT (how specifically Paismo can help)
     
-    For each finding, include a relevance score (1-5) indicating how directly
-    it connects to Paismo's offerings.
+    For each finding, include a relevance score (1-5).
   agent: researcher
 
 executive_lookup_task:
@@ -44,116 +43,62 @@ executive_lookup_task:
     Find the specific person at {topic} company who holds the position of {role}.
     
     Your goal is to identify:
-    1. Full name of the person in the {role} position
-    2. Their exact title (which may be slightly different from {role})
-    3. Professional background and experience
-    4. Any recent professional activities, articles, or mentions
+    1. Full Name
+    2. Exact Title
+    3. Professional Background & Experience
+    4. Any recent mentions or articles
     
-    SEARCH STRATEGY:
-    - Use LinkedIn profiles for the most up-to-date information
-    - Check company websites, especially leadership/team pages
-    - Look for press releases or news articles mentioning executives
-    - Check Crunchbase or other professional databases
-    
-    If you find multiple candidates or conflicting information, analyze recency and 
-    credibility of sources to determine the most likely current person in the role.
-    
-    If you cannot find an exact match for {role}, identify the closest equivalent 
-    position and explain your reasoning.
+    If you can’t find an exact CTO, pick the closest equivalent and explain.
   expected_output: >
-    A detailed profile of the person at {topic} who holds the {role} position:
-    
     EXECUTIVE PROFILE:
     - Full Name: [Name]
     - Exact Title: [Title]
     - Company: {topic}
-    - Professional Background: [Brief summary]
-    - Notable Experience: [Key prior roles/achievements]
-    - Source of Information: [Where you found this data]
-    
-    If unable to find the exact person, provide:
-    - Most likely candidate based on available information
-    - Explanation of uncertainty
-    - Alternative suggested contacts
+    - Professional Background: …
+    - Notable Experience: …
+    - Source: [URL]
   agent: executive_finder
 
 email_task:
   description: >
-    Craft a highly personalized sales email for {topic} based on the research findings.
-    
-    ⚠️ CRITICAL LENGTH REQUIREMENTS - THESE ARE MANDATORY:
-    🔴 MAKE SURE TO SEARCH AND ADDRESS THE EMAIL
-    🔴 TOTAL EMAIL LENGTH: EXACTLY 100-120 WORDS (NOT MORE!)
-    🔴 PARAGRAPHS: MAXIMUM 2-3 SENTENCES EACH (STRICTLY ENFORCED!)
-    🔴 COUNT EVERY WORD - USE A WORD COUNTER
-    🔴 IF EMAIL EXCEEDS 120 WORDS, CUT CONTENT IMMEDIATELY
-    
-    Your email structure (following length limits):
-    
-    1. SUBJECT LINE: (under 50 characters)
-       - Reference specific pain point from research
-       - Promise clear value
-    
-    2. OPENING PARAGRAPH: (20-25 words max)
-       - Start with personalized observation about their company
-       - Reference ONE specific challenge from research
-    
-    3. VALUE PROPOSITION: (40-50 words max)
-       - Connect 1-2 of their pain points to Paismo solutions
-       - Include ONE quantifiable benefit
-       - Be specific to their industry
-    
-    4. PROOF POINT: (25-30 words max)
-       - ONE brief success story (similar company size/industry)
-       - Don't lie about clients or use fake testimonials
-       - Focus on measurable outcome
-    
-    5. CALL TO ACTION: (15-20 words max)
-       - Offer specific next step (15-minute call)
-       - Make scheduling easy
-    
-    MANDATORY WRITING RULES:
-    🚫 NO paragraph longer than 3 sentences
-    🚫 NO email longer than 120 words total
-    🚫 NO generic statements
-    🚫 NO lying about clients or fake testimonials
-    ✅ Count words after each section
-    ✅ Use "you" more than "we"
-    ✅ Keep it conversational but professional
-    ✅ Bold key benefits only
-    
-    WORD COUNT VALIDATION:
-    Before finalizing, count total words and ensure:
-    - Subject line: under 50 characters
-    - Total email body: 100-120 words exactly
-    - Each paragraph: 2-3 sentences maximum
-    - If over 120 words: CUT CONTENT, don't expand limit
-  expected_output: >
-    WORD COUNT: [X words] (must be 100-120)
-    
-    Subject: [under 50 characters]
-    
-    Hi [Name],
-    
-    [Opening paragraph - 20-25 words, max 2-3 sentences]
-    
-    [Value proposition paragraph - 40-50 words, max 2-3 sentences]
-    
-    [Proof point paragraph - 25-30 words, max 2-3 sentences]
-    
-    [Call to action paragraph - 15-20 words, max 2-3 sentences]
-    Link to book a call: https://meetings.hubspot.com/pais
-    Best regards,
-    [Name]
+    Craft a highly personalized sales email for {topic} using both the
+    research report **and** the CTO’s name from the lookup.
+
+    WORD COUNT: 100-120 words exactly  
+    PARAGRAPHS: max 2-3 sentences each  
+
+    Subject: (under 50 chars)
+
+    Hi {executive_lookup_task.split()[0]},
+
+    [Opening 20-25 words about their specific challenge]
+
+    [Value prop 40-50 words, **quantifiable** benefit]
+
+    [Proof point 25-30 words, similar industry]
+
+    [Call to action 15-20 words: 15-min call link]
+
+    Best,  
+    [Your Name]  
     Paismo Team
-    
-    VALIDATION CHECKLIST:
-    ✅ Total word count: 100-120 words
-    ✅ All paragraphs: 2-3 sentences max
-    ✅ No generic content
-    ✅ Specific to {topic}
-    ✅ No fake testimonials
+
+    VALIDATION:
+    - ✅ Subject <50 chars  
+    - ✅ Total 100-120 words  
+    - ✅ Each paragraph ≤3 sentences
+  expected_output: >
+    WORD COUNT: [X words]
+
+    Subject: …
+
+    Hi …,
+
+    …
+
+    …
   agent: email_writer
-  context: 
+  context:
+    - executive_lookup_task
     - research_task
   output_file: output/email.md
